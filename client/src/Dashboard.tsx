@@ -46,7 +46,39 @@ type AuditEntry={id:string;actorId?:string|null;action:string;targetType:string;
 function AdminConsole({user,onBack,onLogout}:{user:User;onBack:()=>void;onLogout:()=>void}){
  const [tab,setTab]=useState<'overview'|'agents'|'properties'|'reports'|'applications'|'audit'|'admins'>('overview');
  const [adminUsers,setAdminUsers]=useState<any[]>([]),[metrics,setMetrics]=useState<Metrics|null>(null),[agents,setAgents]=useState<AdminAgent[]>([]),[properties,setProperties]=useState<AdminProperty[]>([]),[reports,setReports]=useState<AdminReport[]>([]),[applications,setApplications]=useState<Application[]>([]),[audit,setAudit]=useState<AuditEntry[]>([]),[conversation,setConversation]=useState<any>(null),[q,setQ]=useState(''),[status,setStatus]=useState(''),[busy,setBusy]=useState(''),[notice,setNotice]=useState('');
- const load=useCallback(async()=>{try{const [m,a,p,r,v]=await Promise.all([api('/admin/analytics'),api('/admin/agents'),api('/admin/properties'),api('/admin/reports'),api('/admin/verifications')]);const l=user.adminLevel==='SUPPORT_ADMIN'?[]:await api('/admin/audit-logs');setMetrics(m);setAgents(a);setProperties(p);setReports(r);setApplications(v);setAudit(l);}catch(e){setNotice((e as Error).message)}},[user.adminLevel]);
+ const load=useCallback(async()=>{
+  const results=await Promise.allSettled([
+   api('/admin/analytics'),
+   api('/admin/agents'),
+   api('/admin/properties'),
+   api('/admin/reports'),
+   api('/admin/verifications'),
+   user.adminLevel==='SUPPORT_ADMIN'?Promise.resolve([]):api('/admin/audit-logs')
+  ]);
+
+  const [m,a,p,r,v,l]=results;
+  const errors:string[]=[];
+
+  if(m.status==='fulfilled') setMetrics(m.value);
+  else errors.push('Analytics: '+String(m.reason?.message||m.reason));
+
+  if(a.status==='fulfilled') setAgents(a.value);
+  else errors.push('Agents failed to load');
+
+  if(p.status==='fulfilled') setProperties(p.value);
+  else errors.push('Properties failed to load');
+
+  if(r.status==='fulfilled') setReports(r.value);
+  else errors.push('Reports failed to load');
+
+  if(v.status==='fulfilled') setApplications(v.value);
+  else errors.push('Verifications failed to load');
+
+  if(l.status==='fulfilled') setAudit(l.value);
+  else errors.push('Audit history failed to load');
+
+  setNotice(errors.join('. '));
+ },[user.adminLevel]);
  useEffect(()=>{void load()},[load]);
  useEffect(()=>{if(tab==='admins'&&user.adminLevel==='SUPER_ADMIN')api('/admin/admins').then(setAdminUsers).catch(e=>setNotice((e as Error).message))},[tab,user.adminLevel]);
  async function action(key:string,path:string,method:string,body?:unknown){setBusy(key);try{await api(path,{method,body:body===undefined?undefined:JSON.stringify(body)});setNotice('Action completed successfully.');await load()}catch(e){setNotice((e as Error).message)}finally{setBusy('')}}
