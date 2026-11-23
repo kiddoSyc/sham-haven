@@ -12,7 +12,7 @@ type Application={id:string;agencyName?:string|null;registrationNumber?:string|n
 type Plan={id:'STARTER'|'GROWTH'|'PREMIUM';name:string;amountNaira:number;durationDays:number;listingLimit:number;featuredSlots:number};
 type Metrics={users:number;agents:number;pendingAgents:number;publishedListings:number;pendingListings:number;enquiries:number;favorites:number};
 const API=(import.meta.env.VITE_API_URL||'/api').replace(/\/$/,'');
-async function api(path:string,options:RequestInit={}){const r=await fetch(API+path,{...options,credentials:'include',headers:{'Content-Type':'application/json',...(options.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d;}
+async function api(path:string,options:RequestInit={}){const r=await fetch(API+path,{...options,cache:'no-store',credentials:'include',headers:{'Content-Type':'application/json',...(options.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d;}
 const money=(v:string)=>'â‚¦'+Number(v).toLocaleString('en-NG');
 const pretty=(s:string)=>s.replaceAll('_',' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
 
