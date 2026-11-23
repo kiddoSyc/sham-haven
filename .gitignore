@@ -1,0 +1,11 @@
+node_modules
+client/dist
+server/dist
+server/.env
+server/uploads-private
+.env
+.DS_Store
+
+server/uploads-property/
+
+*.tsbuildinfo

@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  AGENT
+  ADMIN
+}
+
+enum VerificationStatus {
+  NOT_SUBMITTED
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  REVOKED
+}
+
+enum AgentAccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum AdminLevel {
+  SUPER_ADMIN
+  ADMIN
+  SUPPORT_ADMIN
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportTargetType {
+  PROPERTY
+  AGENT
+  CONVERSATION
+  USER
+}
+
+enum TransactionType {
+  SALE
+  RENT
+  SHORT_LET
+}
+
+enum PropertyType {
+  HOUSE
+  APARTMENT
+  LAND
+  COMMERCIAL
+  OFFICE
+  SHOP
+  WAREHOUSE
+  FARM
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  PAUSED
+  REJECTED
+  SOLD
+  RENTED
+  EXPIRED
+}
+
+enum SubscriptionPlan {
+  STARTER
+  GROWTH
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  INITIALIZED
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  phone        String?
+  passwordHash String
+  role         Role          @default(CUSTOMER)
+  adminLevel   AdminLevel    @default(SUPPORT_ADMIN)
+  accountStatus AgentAccountStatus @default(ACTIVE)
+  suspensionReason String?
+  suspendedAt DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  agentProfile AgentProfile?
+  listings     Property[]
+  enquiries    Enquiry[]     @relation("CustomerEnquiries")
+  favorites    Favorite[]
+  subscriptions Subscription[]
+  payments     Payment[]
+  buyerConversations Conversation[] @relation("ConversationBuyer")
+  sellerConversations Conversation[] @relation("ConversationSeller")
+  sentMessages Message[] @relation("MessageSender")
+  filedReports Report[] @relation("ReportReporter")
+  assignedReports Report[] @relation("ReportAssignee")
+}
+
+model AgentProfile {
+  id                      String             @id @default(cuid())
+  userId                  String             @unique
+  agencyName              String?
+  registrationNumber      String?
+  certificatePath         String?
+  certificateOriginalName String?
+  verificationStatus      VerificationStatus @default(NOT_SUBMITTED)
+  reviewNote              String?
+  submittedAt             DateTime?
+  reviewedAt              DateTime?
+  reviewedById            String?
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Property {
+  id              String          @id @default(cuid())
+  title           String
+  description     String
+  propertyType    PropertyType
+  transactionType TransactionType
+  priceNaira      BigInt
+  city            String
+  state           String
+  area            String?
+  address         String?
+  bedrooms        Int?
+  bathrooms       Int?
+  landSizeSqm     Float?
+  coverImageUrl   String?
+  images          String[]
+  status          ListingStatus   @default(DRAFT)
+  deletedAt       DateTime?
+  deletedById     String?
+  deletionReason  String?
+  featured        Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  ownerId         String
+  owner           User            @relation(fields: [ownerId], references: [id])
+  enquiries       Enquiry[]
+  favorites       Favorite[]
+  conversations   Conversation[]
+
+  @@index([city, state, transactionType, propertyType, status])
+  @@index([priceNaira])
+}
+
+model Enquiry {
+  id         String   @id @default(cuid())
+  message    String
+  customerId String
+  propertyId String
+  createdAt  DateTime @default(now())
+  customer   User     @relation("CustomerEnquiries", fields: [customerId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId])
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  propertyId String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@index([userId, createdAt])
+}
+
+
+model Subscription {
+  id        String             @id @default(cuid())
+  userId    String
+  plan      SubscriptionPlan
+  status    SubscriptionStatus @default(PENDING)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments  Payment[]
+
+  @@index([userId, status, endsAt])
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  userId         String
+  subscriptionId String?
+  reference      String        @unique
+  amountKobo     BigInt
+  currency       String        @default("NGN")
+  status         PaymentStatus @default(INITIALIZED)
+  provider       String        @default("PAYSTACK")
+  createdAt      DateTime      @default(now())
+  paidAt         DateTime?
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+}
+
+
+model Conversation {
+  id         String   @id @default(cuid())
+  propertyId String
+  buyerId    String
+  sellerId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  buyer      User     @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Restrict)
+  seller     User     @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Restrict)
+  messages   Message[]
+  reports    Report[]
+  @@unique([propertyId, buyerId])
+  @@index([buyerId, updatedAt])
+  @@index([sellerId, updatedAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  createdAt      DateTime @default(now())
+  readAt         DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Restrict)
+  sender         User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+  @@index([conversationId, createdAt])
+}
+
+model Report {
+  id             String @id @default(cuid())
+  reporterId     String
+  assignedAdminId String?
+  targetType     ReportTargetType
+  targetId       String
+  conversationId String?
+  reason         String
+  details        String?
+  status         ReportStatus @default(OPEN)
+  resolutionNote String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  reporter       User @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  assignedAdmin User? @relation("ReportAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  conversation  Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
