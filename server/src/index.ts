@@ -14,6 +14,7 @@ import { PrismaClient, Role, VerificationStatus, ListingStatus, Prisma, AdminLev
 import { z } from 'zod';
 
 const app = express();
+app.set('trust proxy', 1);
 const prisma = new PrismaClient();
 const PORT = Number(process.env.PORT || 4000);
 const ORIGINS = (process.env.CLIENT_ORIGIN || 'http://localhost:5173').split(',').map(x=>x.trim()).filter(Boolean);
