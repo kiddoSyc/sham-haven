@@ -1,0 +1,27 @@
+SHAM HAVEN FRONTEND REDESIGN — APPLY NOTES
+
+This archive contains the updated frontend source files and index.html.
+
+Apply it by extracting the archive into your existing client folder:
+  C:\Users\SAMWRITE\sham-haven\client
+
+Allow the files to overwrite the matching files in client/src and client/index.html.
+Do not delete the rest of your existing project files.
+
+What changed:
+- Reworked the visual theme into a clean, bright modern marketplace style.
+- Added responsive mobile bottom navigation.
+- Added clear Continue browsing and Create an account choices on the homepage.
+- Improved mobile layouts for property search, filters, cards, modals, dashboards and chat.
+- Corrected visible mojibake sequences and standardized NGN currency formatting.
+- Exposed save and message controls to all signed-in roles in the frontend.
+- Added saved-property views to agent and admin dashboards.
+
+Important backend dependency:
+The frontend calls the existing /customer/favorites API for saved properties and the existing /conversations API for messaging. If the server still restricts those endpoints to CUSTOMER accounts, agents and admins will still be rejected by the backend. The server source was not included in this upload, so backend authorization has not been changed. Send the server source before we claim those permissions are fully working.
+
+Validation performed here:
+- TypeScript/TSX syntax transpilation passed.
+- Type-check passed against temporary React/library declarations.
+- CSS parser validation passed.
+- A full Vite production build was not run because this ZIP did not include node_modules, TypeScript project configuration, or a lockfile, and npm dependency installation did not complete in this environment.
